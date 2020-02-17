@@ -1,0 +1,9 @@
+*.o
+*.d
+*.lst
+*.axf
+*.htm
+*.hex
+*.lnp
+*.dep
+*.uvguix.MESPINOS
