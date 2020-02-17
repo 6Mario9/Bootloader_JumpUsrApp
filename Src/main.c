@@ -19,6 +19,10 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdarg.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "main.h"
 #include "stm32f4xx_hal.h"
 
@@ -38,6 +42,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define BL_DEBUG_MSG_EN
 
 /* USER CODE END PM */
 
@@ -47,6 +52,8 @@ CRC_HandleTypeDef hcrc;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
+#define D_UART &huart3
+#define C_UART &huart2
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -58,7 +65,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_CRC_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void printmsg(char *format,...);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -111,8 +118,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-		HAL_UART_Transmit(&huart2,(uint8_t*) data_buffer, sizeof (data_buffer), HAL_MAX_DELAY);
 		current_tick = HAL_GetTick();
+		printmsg("current_tick: %d\r\n", current_tick);
 		while(HAL_GetTick() <= (current_tick + 1000));
 
     /* USER CODE BEGIN 3 */
@@ -321,5 +328,18 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+/* Prints formatted string to console over UART */
+void printmsg(char *format,...)
+{
+#ifdef BL_DEBUG_MSG_EN
+	char str[80];
+  va_list args;
+	va_start(args, format);
+	vsprintf(str, format, args);
+	HAL_UART_Transmit(C_UART, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+	va_end(args);
+#endif
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
