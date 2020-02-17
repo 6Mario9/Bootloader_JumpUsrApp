@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32f4xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -63,6 +64,8 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+char data_buffer[] = "Hello from Bootloader\r\n";
+
 /* USER CODE END 0 */
 
 /**
@@ -72,7 +75,7 @@ static void MX_USART3_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  uint32_t current_tick = 0;
   /* USER CODE END 1 */
   
 
@@ -108,6 +111,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+		HAL_UART_Transmit(&huart2,(uint8_t*) data_buffer, sizeof (data_buffer), HAL_MAX_DELAY);
+		current_tick = HAL_GetTick();
+		while(HAL_GetTick() <= (current_tick + 1000));
 
     /* USER CODE BEGIN 3 */
   }
