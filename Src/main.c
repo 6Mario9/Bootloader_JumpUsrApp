@@ -54,6 +54,8 @@ UART_HandleTypeDef huart3;
 
 #define D_UART &huart3
 #define C_UART &huart2
+
+#define BL_RX_LEN (200)
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -72,6 +74,8 @@ static void printmsg(char *format,...);
 /* USER CODE BEGIN 0 */
 
 char data_buffer[] = "Hello from Bootloader\r\n";
+uint8_t bl_rx_buffer[BL_RX_LEN];
+
 
 /* USER CODE END 0 */
 
@@ -125,6 +129,59 @@ int main(void)
 
 void bootloader_uart_read_data(void)
 {
+	uint8_t rcv_len = 0;
+	
+	while(1)
+	{
+		memset(bl_rx_buffer,0,BL_RX_LEN);
+		/* Here is read and decode the command coming from host
+		 * first read only one bute from host, which is he length
+		 * fied of the command*/
+		HAL_UART_Receive(C_UART,bl_rx_buffer,1,HAL_MAX_DELAY);
+		rcv_len = bl_rx_buffer[0];
+		HAL_UART_Receive(C_UART,&bl_rx_buffer[1],rcv_len,HAL_MAX_DELAY);
+		
+		switch(bl_rx_buffer[1])
+		{
+			case BL_GET_VER:
+				bootlader_handle_getver_cmd(bl_rx_buffer);
+				break;
+			case BL_GET_HELP:
+				bootlader_handle_gethelp_cmd(bl_rx_buffer);
+				break;
+			case BL_GET_CID:
+				bootlader_handle_getcid_cmd(bl_rx_buffer);
+			 break;
+			case BL_GET_RDP_STATUS:
+			  bootlader_handle_getrdp_cmd(bl_rx_buffer);
+				break;
+			case BL_GO_TO_ADDR:
+		    bootlader_handle_go_cmd(bl_rx_buffer);
+				break;
+			case BL_FLASH_ERASE:
+				bootlader_handle_flash_erase_cmd(bl_rx_buffer);
+				break;
+			case BL_MEM_WRITE:
+				bootlader_handle_mem_write_cmd(bl_rx_buffer);
+				break;
+			case BL_ENDIS_RW_PROTECT:
+				bootlader_handle_endis_rw_protect_cmd(bl_rx_buffer);
+				break;
+			case BL_MEM_READ:
+				bootlader_handle_mem_read_cmd(bl_rx_buffer);
+				break;
+			case BL_READ_SECTOR_STATUS:
+				bootlader_handle_read_sector_status_cmd(bl_rx_buffer);
+				break;
+			case BL_OTP_READ:
+				bootlader_handle_read_otp_cmd(bl_rx_buffer);
+				break;
+			default:
+				printmsg("BL_DEBUG_MSG_EN: Invalid command code received from host \r\n");	
+				break;
+		}
+	}
+	
 }
 	
 /* Code to jump tp User App, here is assumed that 
@@ -369,5 +426,28 @@ void printmsg(char *format,...)
 	va_end(args);
 #endif
 }
+
+void bootlader_handle_getver_cmd(uint8_t *bl_rx_buffer)
+{}
+void bootlader_handle_gethelp_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_getcid_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_getrdp_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_go_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_flash_erase_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_mem_write_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_mem_read_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_read_otp_cmd(uint8_t *pBuffer)
+{}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

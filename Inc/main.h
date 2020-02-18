@@ -28,6 +28,8 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
+
 #include "stm32f4xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -76,11 +78,35 @@ void Error_Handler(void);
 
 #define FLASH_SECTOR2_BASE_ADDRESS 0x08008000U
 
+#define BL_GET_VER             0x51
+#define BL_GET_HELP            0x52
+#define BL_GET_CID             0x53
+#define BL_GET_RDP_STATUS      0x54
+#define BL_GO_TO_ADDR          0x55
+#define BL_FLASH_ERASE         0x56
+#define BL_MEM_WRITE           0x57
+#define BL_ENDIS_RW_PROTECT    0x58
+#define BL_MEM_READ            0x59
+#define BL_READ_SECTOR_STATUS  0x5A
+#define BL_OTP_READ            0x5B
+
 /* USER CODE END Private defines */
 
 /* Bootloader functions prototypes */
 void bootloader_uart_read_data(void);
 void bootloader_jump_to_user_app(void);
+
+void bootlader_handle_getver_cmd(uint8_t *bl_rx_buffer);
+void bootlader_handle_gethelp_cmd(uint8_t *pBuffer);
+void bootlader_handle_getcid_cmd(uint8_t *pBuffer);
+void bootlader_handle_getrdp_cmd(uint8_t *pBuffer);
+void bootlader_handle_go_cmd(uint8_t *pBuffer);
+void bootlader_handle_flash_erase_cmd(uint8_t *pBuffer);
+void bootlader_handle_mem_write_cmd(uint8_t *pBuffer);
+void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer);
+void bootlader_handle_mem_read_cmd(uint8_t *pBuffer);
+void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer);
+void bootlader_handle_read_otp_cmd(uint8_t *pBuffer);
 
 #ifdef __cplusplus
 }
