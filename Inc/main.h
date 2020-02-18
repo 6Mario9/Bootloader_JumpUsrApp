@@ -93,6 +93,9 @@ void Error_Handler(void);
 #define BL_ACK  0xA5
 #define BL_NACK 0x7F
 
+#define VERIFY_CRC_FAIL    1
+#define VERIFY_CRC_SUCCESS 0
+
 /* USER CODE END Private defines */
 
 /* Bootloader functions prototypes */
@@ -111,6 +114,7 @@ void bootlader_handle_mem_read_cmd(uint8_t *pBuffer);
 void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer);
 void bootlader_handle_read_otp_cmd(uint8_t *pBuffer);
 
+uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host);
 void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
 void bootloader_send_nack(void);
 

@@ -436,7 +436,11 @@ void bootlader_handle_getver_cmd(uint8_t *bl_rx_buffer)
 	
 	/* 1. Verify the checksum */
 	printmsg("BL_DEBUG_MSG_EN: bootlader_getver_cmd \r\n");
-	if(!bootloader_verify_crc(&bl_rx_buffer[0],bl_rx_buffer[0]+1,0))
+	/* total length of the command packet */
+	uint32_t command_packet_len = bl_rx_buffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(bl_rx_buffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&bl_rx_buffer[0],command_packet_len - 4,host_crc))
 	{
 	printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
 		/* Checksum is correct*/
@@ -486,6 +490,24 @@ void bootloader_send_nack(void)
 {
 	uint8_t nack = BL_NACK;
 	HAL_UART_Transmit(C_UART, &nack, 1, HAL_MAX_DELAY);
+}
+
+/* This verifies the CRC of the given buffer in pData*/
+uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host)
+{
+	uint32_t uwCRCValue = 0xff;
+	
+	for(uint32_t i=0; i<len; i++)
+	{
+		uint32_t i_data = pData[i];
+		uwCRCValue = HAL_CRC_Accumulate(&hcrc, &i_data, 1);
+	}
+	
+	if(uwCRCValue == crc_host)
+	{
+		return VERIFY_CRC_SUCCESS;
+	}
+	return VERIFY_CRC_FAIL;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
