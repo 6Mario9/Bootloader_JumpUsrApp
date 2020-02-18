@@ -82,7 +82,7 @@ char data_buffer[] = "Hello from Bootloader\r\n";
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint32_t current_tick = 0;
+	
   /* USER CODE END 1 */
   
 
@@ -110,22 +110,50 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
- 
- 
+	if(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET)
+	{
+		printmsg("BL_DEBUG_MSG_EN: Button is pressed.. going to BL mode \r\n");	
+		bootloader_uart_read_data();
+	}
+	else
+	{
+			printmsg("BL_DEBUG_MSG_EN: Button is not pressed.. executing User App \r\n");	
+		bootloader_jump_to_user_app();
+	}
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-		current_tick = HAL_GetTick();
-		printmsg("current_tick: %d\r\n", current_tick);
-		while(HAL_GetTick() <= (current_tick + 1000));
-
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
 }
+
+void bootloader_uart_read_data(void)
+{
+}
+	
+/* Code to jump tp User App, here is assumed that 
+ * FLASH_SECTOR2_BASE_ADDRESS is where the User App is stored*/
+void bootloader_jump_to_user_app(void)
+{
+	/* Function pointer to hold address of the reset handler of User App*/
+	void(*app_reset_handler)(void);
+	
+	printmsg("BL_DEBUG_MSG_EN: bootloader_jump_to_user_app \r\n");
+	
+	/* 1. Configure the MSP by reading the value from the base address of sector 2*/
+	uint32_t msp_value = *(volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS;
+	printmsg("BL_DEBUG_MSG_EN: MSP value %#x \r\n", msp_value);
+	
+	/*This function comes from CMSIS*/
+	__set_MSP(msp_value);
+	
+	/* 2. Now fetch the reset handler address of the user app
+	 * from the location FLASH_SECTOR2_BASE_ADDRESS+4 */
+	
+	uint32_t resethandler_address = *(volatile uint32_t *)(FLASH_SECTOR2_BASE_ADDRESS +4);
+	app_reset_handler = (void *) resethandler_address;
+	printmsg("BL_DEBUG_MSG_EN: app reset handler address %#x \r\n", app_reset_handler);
+	
+	/* 3. Jump to reset hanlder of the User App */
+	app_reset_handler();
+}
+
 
 /**
   * @brief System Clock Configuration
