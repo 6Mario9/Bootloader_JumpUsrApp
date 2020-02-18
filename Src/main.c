@@ -427,8 +427,31 @@ void printmsg(char *format,...)
 #endif
 }
 
+/********** IMPLEMENTATION OF BOOTLADER COMMAND HANDLE FUNCTIONS *********/
+
+/* Helper function to handle BL_GETVER command */
 void bootlader_handle_getver_cmd(uint8_t *bl_rx_buffer)
-{}
+{
+ uint8_t bl_version;
+	
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_getver_cmd \r\n");
+	if(!bootloader_verify_crc(&bl_rx_buffer[0],bl_rx_buffer[0]+1,0))
+	{
+	printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(bl_rx_buffer[0],1);
+		bl_version = get_bootloader_ver();
+		printmsg("BL_DEBUG_MSG_EN: BL_VER %d %#x\r\n", bl_version, bl_version);
+		bootloader_uart_write_data(&bl_version,1);
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_gethelp_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_getcid_cmd(uint8_t *pBuffer)
