@@ -96,6 +96,9 @@ void Error_Handler(void);
 #define VERIFY_CRC_FAIL    1
 #define VERIFY_CRC_SUCCESS 0
 
+/* BL version 1.0*/
+#define BL_VERSION 0x10
+
 /* USER CODE END Private defines */
 
 /* Bootloader functions prototypes */
@@ -117,6 +120,9 @@ void bootlader_handle_read_otp_cmd(uint8_t *pBuffer);
 uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host);
 void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
 void bootloader_send_nack(void);
+
+uint8_t get_bootloader_ver(void);
+void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len);
 
 #ifdef __cplusplus
 }

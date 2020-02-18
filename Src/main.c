@@ -510,4 +510,18 @@ uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host)
 	return VERIFY_CRC_FAIL;
 }
 
+/* Returns the macro value for Bootloader version */
+uint8_t get_bootloader_ver(void)
+{
+	return (uint8_t)BL_VERSION;
+}
+
+/* Function that writes data in to C_UART */
+void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len)
+{
+	/* Can be replace the below ST USART driver API calledwith another
+	 * MCU driver */
+	HAL_UART_Transmit(C_UART, pBuffer, len, HAL_MAX_DELAY);
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
