@@ -90,6 +90,9 @@ void Error_Handler(void);
 #define BL_READ_SECTOR_STATUS  0x5A
 #define BL_OTP_READ            0x5B
 
+#define BL_ACK  0xA5
+#define BL_NACK 0x7F
+
 /* USER CODE END Private defines */
 
 /* Bootloader functions prototypes */
@@ -107,6 +110,9 @@ void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer);
 void bootlader_handle_mem_read_cmd(uint8_t *pBuffer);
 void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer);
 void bootlader_handle_read_otp_cmd(uint8_t *pBuffer);
+
+void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
+void bootloader_send_nack(void);
 
 #ifdef __cplusplus
 }

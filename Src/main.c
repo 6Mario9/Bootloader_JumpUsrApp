@@ -472,5 +472,20 @@ void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_read_otp_cmd(uint8_t *pBuffer)
 {}
+	
+/* This function sends ACK if CRC matches along with "len to follow" */
+void bootloader_send_ack(uint8_t command_code, uint8_t follow_len)
+{
+	uint8_t ack_buf[2];
+	ack_buf[0] = BL_ACK;
+	ack_buf[1] = follow_len;
+	HAL_UART_Transmit(C_UART, ack_buf, 2, HAL_MAX_DELAY);
+}
+	
+void bootloader_send_nack(void)
+{
+	uint8_t nack = BL_NACK;
+	HAL_UART_Transmit(C_UART, &nack, 1, HAL_MAX_DELAY);
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
