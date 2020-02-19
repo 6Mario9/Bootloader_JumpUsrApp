@@ -123,6 +123,7 @@ void bootloader_send_nack(void);
 
 uint8_t get_bootloader_ver(void);
 uint16_t get_mcu_chip_id(void);
+uint8_t get_flash_rdp_level (void);
 void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len);
 
 #ifdef __cplusplus

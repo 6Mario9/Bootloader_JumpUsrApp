@@ -506,7 +506,30 @@ void bootlader_handle_getcid_cmd(uint8_t *pBuffer)
 	}
 }
 void bootlader_handle_getrdp_cmd(uint8_t *pBuffer)
-{}
+{
+	uint8_t rdp_level = 0x00;
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_getrdp_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],1);
+	  rdp_level = get_flash_rdp_level();
+	  printmsg("BL_DEBUG_MSG_EN: RDP Level %d %#x \r\n", rdp_level, rdp_level);			
+		bootloader_uart_write_data((uint8_t*)&rdp_level,1);
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_go_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_flash_erase_cmd(uint8_t *pBuffer)
@@ -580,5 +603,23 @@ uint16_t get_mcu_chip_id(void)
 	cid = (uint16_t)(DBGMCU->IDCODE) & 0x0FFF;
 	return cid;
 }
+
+/* This functions reads the RDP (Read Protection Option byte) value*/
+uint8_t get_flash_rdp_level (void)
+{
+	uint8_t rdp_status;
+	
+#if 0
+	FLASH_OBProgramInitTypeDef ob_handle;
+	HAL_FLASHEx_OBGetConfig(&ob_handle);
+	rdp_status = (uint8_t)ob_handle.RDPLevel;
+#else
+	volatile uint32_t *pOB_addr = (uint32_t*) 0x1FFFC000;
+	rdp_status = (uint8_t)(*pOB_addr >>8);
+#endif
+	
+	return rdp_status;
+}
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
