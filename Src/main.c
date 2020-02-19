@@ -76,6 +76,8 @@ static void printmsg(char *format,...);
 char data_buffer[] = "Hello from Bootloader\r\n";
 uint8_t bl_rx_buffer[BL_RX_LEN];
 
+uint8_t supported_cmd[] = {0x51,0x52,0x53,0x54,0x55,0x56,0x57,0x58,0x59,0x5a,0x5b};
+
 
 /* USER CODE END 0 */
 
@@ -457,7 +459,27 @@ void bootlader_handle_getver_cmd(uint8_t *bl_rx_buffer)
 	}
 }
 void bootlader_handle_gethelp_cmd(uint8_t *pBuffer)
-{}
+{
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_gethelp_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],sizeof(supported_cmd));
+		bootloader_uart_write_data(supported_cmd,sizeof(supported_cmd));
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_getcid_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_getrdp_cmd(uint8_t *pBuffer)
