@@ -481,7 +481,30 @@ void bootlader_handle_gethelp_cmd(uint8_t *pBuffer)
 	}
 }
 void bootlader_handle_getcid_cmd(uint8_t *pBuffer)
-{}
+{
+	uint16_t cid;
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_getcid_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],2);
+	  cid = get_mcu_chip_id();
+	printmsg("BL_DEBUG_MSG_EN: ID %d %#x \r\n", cid, cid);			
+		bootloader_uart_write_data((uint8_t*)&cid,2);
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_getrdp_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_go_cmd(uint8_t *pBuffer)
@@ -544,6 +567,18 @@ void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len)
 	/* Can be replace the below ST USART driver API calledwith another
 	 * MCU driver */
 	HAL_UART_Transmit(C_UART, pBuffer, len, HAL_MAX_DELAY);
+}
+
+/* Functions to get the chip identifier or device identifier */
+uint16_t get_mcu_chip_id(void)
+{
+	/* The STM32F446xx MCUs integrate an MCU ID code. This ID identifies the ST MCU partnumber
+  * and the die revision. It is part of the DBG_MCU component and is mapped on the
+  * external PPB bus */
+	
+	uint16_t cid;
+	cid = (uint16_t)(DBGMCU->IDCODE) & 0x0FFF;
+	return cid;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

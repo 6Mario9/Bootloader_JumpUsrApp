@@ -122,6 +122,7 @@ void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
 void bootloader_send_nack(void);
 
 uint8_t get_bootloader_ver(void);
+uint16_t get_mcu_chip_id(void);
 void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len);
 
 #ifdef __cplusplus
