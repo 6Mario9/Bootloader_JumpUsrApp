@@ -610,7 +610,50 @@ void bootlader_handle_flash_erase_cmd(uint8_t *pBuffer)
 	}
 }
 void bootlader_handle_mem_write_cmd(uint8_t *pBuffer)
-{}
+{
+	uint8_t write_status = 0x00;
+	uint8_t payload_len = pBuffer[6];
+	uint32_t mem_address =*((uint32_t*)(&pBuffer[2]));
+	
+	
+/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_mem_write_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	  printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],1);
+	  printmsg("BL_DEBUG_MSG_EN: mem write address - %#x \r\n", mem_address);	
+
+		if(verify_address(mem_address) == ADDR_VALID)	
+		{			
+		printmsg("BL_DEBUG_MSG_EN: valid mem write address \r\n");	
+			
+	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin,GPIO_PIN_SET);
+			/* execute mem write */
+		write_status = execute_mem_write(&pBuffer[7], mem_address, payload_len);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin,GPIO_PIN_RESET);
+		
+	  printmsg("BL_DEBUG_MSG_EN: flash write status - %#x \r\n", write_status);			
+		}
+		else
+		{
+			printmsg("BL_DEBUG_MSG_EN: invalid mem write address \r\n");	
+			write_status = ADDR_INVALID;
+		}
+				bootloader_uart_write_data(&write_status,1);
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_mem_read_cmd(uint8_t *pBuffer)
@@ -728,6 +771,7 @@ uint8_t verify_address(uint32_t go_address)
 		}
 }
 
+/*Function that erase flash memory sectors */
 uint8_t execute_flash_erase(uint8_t sector_number, uint8_t number_of_sectors)
 {
 	/* We have 8 sectors in STM32F446RE mcu... sector[0 to 7]
@@ -772,4 +816,21 @@ uint8_t execute_flash_erase(uint8_t sector_number, uint8_t number_of_sectors)
 	return (HAL_StatusTypeDef)INVALID_SECTOR;
 }
 
+/* Note 1: This functions supports only writing to flash memory
+ * Note 2: This function does not check if mem_address is valid for MCU */
+uint8_t execute_mem_write(uint8_t * pBuffer, uint32_t mem_address, uint32_t len)
+{
+	uint8_t status = HAL_OK;
+	
+	HAL_FLASH_Unlock();
+	
+	for(uint32_t i = 0; i<len ; i++)
+	{
+		/* Here is programmed the flash byte by byte*/
+		status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, mem_address + i, pBuffer[i]);
+	}
+	HAL_FLASH_Lock();
+	
+	return status;
+}
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
