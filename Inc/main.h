@@ -96,6 +96,18 @@ void Error_Handler(void);
 #define VERIFY_CRC_FAIL    1
 #define VERIFY_CRC_SUCCESS 0
 
+#define ADDR_VALID 0x00
+#define ADDR_INVALID 0x01
+
+/* Values are according to the MCU */
+#define SRAM1_SIZE       120*1024 /* STM32F446RE has 112KB*/
+#define SRAM1_END        (SRAM1_BASE + SRAM1_SIZE)
+#define SRAM2_SIZE       16*1024 /* STM32F446RE has 16 KB*/
+#define SRAM2_END        (SRAM2_BASE + SRAM2_SIZE)
+#define FLASH_SIZE       512*1024 /* STM32F446RE has 512 KB*/
+#define BKPSRAM_SIZE     4*1024  /* STM32F446RE has 4 KB*/
+#define BKPSRAM_END      (BKPSRAM_BASE + BKPSRAM_SIZE)
+
 /* BL version 1.0*/
 #define BL_VERSION 0x10
 
@@ -125,6 +137,7 @@ uint8_t get_bootloader_ver(void);
 uint16_t get_mcu_chip_id(void);
 uint8_t get_flash_rdp_level (void);
 void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len);
+uint8_t verify_address(uint32_t go_address);
 
 #ifdef __cplusplus
 }

@@ -531,7 +531,52 @@ void bootlader_handle_getrdp_cmd(uint8_t *pBuffer)
 	}
 }
 void bootlader_handle_go_cmd(uint8_t *pBuffer)
-{}
+{
+	uint32_t go_address = 0;
+	uint8_t addr_valid = ADDR_VALID;
+	uint8_t addr_invalid = ADDR_INVALID;
+	
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_go_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	  printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],1);
+		/* Extract the gor address */
+		go_address = *((uint32_t*)&pBuffer[2]);
+	  printmsg("BL_DEBUG_MSG_EN: Go Address %#x \r\n", go_address);	
+
+		if(verify_address(go_address) == ADDR_VALID)		
+		{
+			/* Tell Host that address is ok */
+			bootloader_uart_write_data(&addr_valid,1);
+			
+			go_address +=1; /* make T bit = 1 */
+			void(*lets_jump)(void) = (void*)go_address;
+			printmsg("BL_DEBUG_MSG_EN: Jumping to go address!! \r\n");
+			
+			lets_jump();
+		}
+		else
+		{
+			printmsg("BL_DEBUG_MSG_EN: Go Address invalid \r\n");
+			/* Tell Host that address is not OK */
+			bootloader_uart_write_data(&addr_invalid,1);
+		}	
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_flash_erase_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_mem_write_cmd(uint8_t *pBuffer)
@@ -621,5 +666,36 @@ uint8_t get_flash_rdp_level (void)
 	return rdp_status;
 }
 
+/*Function That verifies the address sent by Host */
+uint8_t verify_address(uint32_t go_address)
+{
+	/* what are the valida address to which we can jum?
+	 * system memory? yes
+	 * sram1 memory? yes
+	 * sram2 memory? yes
+	 * backup sram memory? yes
+	 * peripheral memory? possible, but not allowed, so NO
+	 * external memory? yes */
+	if (go_address >= SRAM1_BASE && go_address <= SRAM1_END)
+	{
+		return ADDR_VALID;
+	}
+	else if(go_address >= SRAM2_BASE && go_address <= SRAM2_END)
+	{
+		return ADDR_VALID;
+	}
+	else if(go_address >= FLASH_BASE && go_address <= FLASH_END)
+	{
+		return ADDR_VALID;
+	}
+	else if(go_address >= BKPSRAM_BASE && go_address <= BKPSRAM_END)
+	{
+		return ADDR_VALID;
+	}
+	else
+		{
+			return ADDR_INVALID;
+		}
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
