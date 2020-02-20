@@ -578,7 +578,37 @@ void bootlader_handle_go_cmd(uint8_t *pBuffer)
 	}
 }
 void bootlader_handle_flash_erase_cmd(uint8_t *pBuffer)
-{}
+{
+	
+	uint8_t erase_stat = 0x00;
+	
+/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_flash_erase_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	  printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],1);
+	  printmsg("BL_DEBUG_MSG_EN: Init sector - %d , no of sector - %d \r\n", pBuffer[2], pBuffer[3]);		
+		
+	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin,GPIO_PIN_SET);
+		erase_stat = execute_flash_erase(pBuffer[2], pBuffer[3]);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin,GPIO_PIN_RESET);
+		
+	  printmsg("BL_DEBUG_MSG_EN: flash erase status - %#x \r\n", erase_stat);			
+		bootloader_uart_write_data(&erase_stat,1);
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_mem_write_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer)
@@ -696,6 +726,50 @@ uint8_t verify_address(uint32_t go_address)
 		{
 			return ADDR_INVALID;
 		}
+}
+
+uint8_t execute_flash_erase(uint8_t sector_number, uint8_t number_of_sectors)
+{
+	/* We have 8 sectors in STM32F446RE mcu... sector[0 to 7]
+	 * number_of_sectors must be in the range of 0 to 7
+	 * if sector_number = 0xff, that means mass erase
+	 * Code needs to be modified if the MCU supports more flash sectors */
+	FLASH_EraseInitTypeDef flashErase_Handle;
+	uint32_t sectorError;
+	HAL_StatusTypeDef status;
+	
+	if(number_of_sectors > 8)
+		return INVALID_SECTOR;
+	
+	if((sector_number == 0xff) || (sector_number <= 7))
+	{
+		if(sector_number == (uint8_t)0xff)
+		{
+			flashErase_Handle.TypeErase = FLASH_TYPEERASE_MASSERASE;
+		}
+		else
+			{
+				/* Here is calculated how many sectors needs to be erased */
+				uint8_t remaining_sector = 8 - sector_number;
+				if(number_of_sectors > remaining_sector)
+				{
+					number_of_sectors = remaining_sector;
+				}
+				flashErase_Handle.TypeErase = FLASH_TYPEERASE_MASSERASE;
+				flashErase_Handle.Sector = sector_number; /* this is the initial sector */
+				flashErase_Handle.NbSectors = number_of_sectors;
+			}
+			flashErase_Handle.Banks = FLASH_BANK_1;
+			
+			/* Get access to touch the file regiters */
+			HAL_FLASH_Unlock();
+			flashErase_Handle.VoltageRange = FLASH_VOLTAGE_RANGE_3; /* for STM32F466RE MCU*/
+			status =  HAL_FLASHEx_Erase(&flashErase_Handle, &sectorError);
+			HAL_FLASH_Lock();
+			
+			return status;
+	}
+	return (HAL_StatusTypeDef)INVALID_SECTOR;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
