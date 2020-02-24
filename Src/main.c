@@ -691,7 +691,31 @@ void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer)
 void bootlader_handle_read_otp_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_dis_rw_protect_cmd(uint8_t *pBuffer)
-{}
+{
+uint8_t status = 0x00;
+	
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_dis_rw_protect_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	  printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],1);
+		status = configure_flash_sector_rw_protection(0, 0, 1);
+	  printmsg("BL_DEBUG_MSG_EN: flash erase status - %#x \r\n", status);		
+		bootloader_uart_write_data(&status,1);		
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 	
 /* This function sends ACK if CRC matches along with "len to follow" */
 void bootloader_send_ack(uint8_t command_code, uint8_t follow_len)
