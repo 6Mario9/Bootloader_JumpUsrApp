@@ -89,6 +89,7 @@ void Error_Handler(void);
 #define BL_MEM_READ            0x59
 #define BL_READ_SECTOR_STATUS  0x5A
 #define BL_OTP_READ            0x5B
+#define BL_DIS_R_W_PROTECT     0x5C
 
 #define BL_ACK  0xA5
 #define BL_NACK 0x7F
@@ -130,6 +131,7 @@ void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer);
 void bootlader_handle_mem_read_cmd(uint8_t *pBuffer);
 void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer);
 void bootlader_handle_read_otp_cmd(uint8_t *pBuffer);
+void bootlader_handle_dis_rw_protect_cmd(uint8_t *pBuffer);
 
 uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host);
 void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
@@ -142,6 +144,7 @@ void bootloader_uart_write_data(uint8_t *pBuffer, uint32_t len);
 uint8_t verify_address(uint32_t go_address);
 uint8_t execute_flash_erase(uint8_t sector_number, uint8_t number_of_sectors);
 uint8_t execute_mem_write(uint8_t * pBuffer, uint32_t mem_address, uint32_t len);
+uint8_t configure_flash_sector_rw_protection(uint8_t sector_detail, uint8_t protection_mode, uint8_t disable);
 
 #ifdef __cplusplus
 }

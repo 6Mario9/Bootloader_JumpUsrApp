@@ -178,6 +178,9 @@ void bootloader_uart_read_data(void)
 			case BL_OTP_READ:
 				bootlader_handle_read_otp_cmd(bl_rx_buffer);
 				break;
+			case BL_DIS_R_W_PROTECT:
+				bootlader_handle_dis_rw_protect_cmd(bl_rx_buffer);
+				break;
 			default:
 				printmsg("BL_DEBUG_MSG_EN: Invalid command code received from host \r\n");	
 				break;
@@ -616,7 +619,7 @@ void bootlader_handle_mem_write_cmd(uint8_t *pBuffer)
 	uint32_t mem_address =*((uint32_t*)(&pBuffer[2]));
 	
 	
-/* 1. Verify the checksum */
+  /* 1. Verify the checksum */
 	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_mem_write_cmd \r\n");
 	/* total length of the command packet */
 	uint32_t command_packet_len = pBuffer[0]+1;
@@ -655,12 +658,39 @@ void bootlader_handle_mem_write_cmd(uint8_t *pBuffer)
 	}
 }
 void bootlader_handle_endis_rw_protect_cmd(uint8_t *pBuffer)
-{}
+{
+
+	uint8_t status = 0x00;
+	
+	/* 1. Verify the checksum */
+	printmsg("BL_DEBUG_MSG_EN: bootlader_handle_endis_rw_protect_cmd \r\n");
+	/* total length of the command packet */
+	uint32_t command_packet_len = pBuffer[0]+1;
+	/* extract the CRC32 sent by the host */
+	uint32_t host_crc = *((uint32_t *)(pBuffer + command_packet_len - 4));
+	if(!bootloader_verify_crc(&pBuffer[0],command_packet_len - 4,host_crc))
+	{
+	  printmsg("BL_DEBUG_MSG_EN: Checksum success!! \r\n");	
+		/* Checksum is correct*/
+		bootloader_send_ack(pBuffer[0],1);
+		status = configure_flash_sector_rw_protection(pBuffer[2], pBuffer[3], 0);
+	  printmsg("BL_DEBUG_MSG_EN: flash erase status - %#x \r\n", status);		
+		bootloader_uart_write_data(&status,1);		
+	}
+	else
+	{
+		printmsg("BL_DEBUG_MSG_EN: Checksum fails !!\r\n");	
+		/*Cheksum is wrong send nack*/
+		bootloader_send_nack();
+	}
+}
 void bootlader_handle_mem_read_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_read_sector_status_cmd(uint8_t *pBuffer)
 {}
 void bootlader_handle_read_otp_cmd(uint8_t *pBuffer)
+{}
+void bootlader_handle_dis_rw_protect_cmd(uint8_t *pBuffer)
 {}
 	
 /* This function sends ACK if CRC matches along with "len to follow" */
@@ -833,4 +863,79 @@ uint8_t execute_mem_write(uint8_t * pBuffer, uint32_t mem_address, uint32_t len)
 	
 	return status;
 }
+
+/* Modifying user option bytes
+ *To modify the user option value, follow the sequence below:
+ *1. Check that no Flash memory operation is ongoing by checking the BSY bit in the
+ *   FLASH_SR register
+ *2. Write the desired option value in the FLASH_OPTCR register.
+ *3. Set the option start bit (OPTSTRT) in the FLASH_OPTCR register
+ *4. Wait for the BSY bit to be cleared. */
+uint8_t configure_flash_sector_rw_protection(uint8_t sector_detail, uint8_t protection_mode, uint8_t disable)
+{
+	/* First configure the protection mode
+	 * protection_mode = 1, means write protect of the user flash sector
+	 * protection_mode = 2, means read/write protect of the user flash sectors
+	 * According to Ref Manual of STM32F446xx table 9, we have to modify the address  0x1FFF C008 bit 15 (SPRMOD)*/
+	
+	/* Flash option control register (OPTCR) */
+	volatile uint32_t *pOPTCR = (uint32_t *) 0x40023C14;
+	
+	if(disable)
+	{
+		/* Option byte config unlock */
+		HAL_FLASH_OB_Unlock();
+		/* Wait till no active operation on flash */
+		while( __HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET);
+		/* Clear the 31st bit (default state)*/
+		*pOPTCR &= ~(0x01 <<31);
+		/* Clear the protectio: make all bits belonging to sectors as 1*/
+		*pOPTCR |= (0xFF <<16);
+		/* Set the option start bit (OPTSTRT) in the FLASH_OPTCR register*/
+		*pOPTCR |= (0x01 <<1);
+		/* Wait till no active operation in flash */
+		while( __HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET);
+		HAL_FLASH_OB_Lock();
+		
+		return 0;
+	}
+	
+ if(protection_mode == (uint8_t) 1)
+ {
+	 	/* Option byte config unlock */
+		HAL_FLASH_OB_Unlock();
+	 	/* Wait till no active operation on flash */
+		while( __HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET);
+	 /* Setting write protection for the sectors, clear 31st bit */
+	 *pOPTCR &= ~(1 <<31);
+	 /* Put write protection on sectors*/
+	 *pOPTCR &= ~(sector_detail <<16);
+	 		/* Set the option start bit (OPTSTRT) in the FLASH_OPTCR register*/
+		*pOPTCR |= (1 <<1);
+		/* Wait till no active operation in flash */
+		while( __HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET);
+		HAL_FLASH_OB_Lock();
+ }
+ else if(protection_mode == (uint8_t) 2)
+ {
+	 	/* Option byte config unlock */
+		HAL_FLASH_OB_Unlock();
+	 	/* Wait till no active operation on flash */
+		while( __HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET);
+	 /* Setting write protection for the sectors, clear 31st bit */
+	 *pOPTCR |= (1 <<31);
+	 /* Put read and write protection on sectors*/
+	 *pOPTCR &= ~(0xFF <<16);
+	 *pOPTCR |= (sector_detail <<16);
+	 		/* Set the option start bit (OPTSTRT) in the FLASH_OPTCR register*/
+		*pOPTCR |= (1 <<1);
+		/* Wait till no active operation in flash */
+		while( __HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET);
+		HAL_FLASH_OB_Lock();
+ }
+ 
+ return 0;
+	
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
